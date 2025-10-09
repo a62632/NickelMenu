@@ -323,7 +323,7 @@ NM_ACTION_(nickel_setting) {
 
         //libnickel 4.28.17623 * _ZN15ReadingSettings11getDarkModeEv
         bool (*ReadingSettings__getDarkMode)(Settings*);
-        NM_ACT_XSYM(ReadingSettings__getDarkMode, "_ZN15ReadingSettings11getDarkModeEv", "could not dlsym PowerSettings::getDarkMode");
+        NM_ACT_XSYM(ReadingSettings__getDarkMode, "_ZN15ReadingSettings11getDarkModeEv", "could not dlsym ReadingSettings::getDarkMode");
 
         //libnickel 4.28.17623 * _ZN15ReadingSettings11setDarkModeEb
         bool (*ReadingSettings__setDarkMode)(Settings*, bool);
@@ -360,29 +360,50 @@ NM_ACTION_(nickel_setting) {
             QShowEvent ev;
             QApplication::sendEvent(cv, &ev);
         }
-    } else if (!strcmp(arg2, "lockscreen")) {
+    } else if (!strcmp(arg2, "lockscreen") || !strcmp(arg2, "sleepcover")) {
         void *PowerSettings_vtable = dlsym(RTLD_DEFAULT, "_ZTV13PowerSettings");
         NM_CHECK(nullptr, PowerSettings_vtable, "could not dlsym the vtable for PowerSettings");
         vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
 
-        //libnickel 4.12.12111 * _ZN13PowerSettings16getUnlockEnabledEv
-        bool (*PowerSettings__getUnlockEnabled)(Settings*);
-        NM_ACT_XSYM(PowerSettings__getUnlockEnabled, "_ZN13PowerSettings16getUnlockEnabledEv", "could not dlsym PowerSettings::getUnlockEnabled");
-
-        //libnickel 4.12.12111 * _ZN13PowerSettings16setUnlockEnabledEb
-        bool (*PowerSettings__setUnlockEnabled)(Settings*, bool);
-        NM_ACT_XSYM(PowerSettings__setUnlockEnabled, "_ZN13PowerSettings16setUnlockEnabledEb", "could not dlsym PowerSettings::setUnlockEnabled");
-
-        if (mode == mode_toggle) {
-            v = PowerSettings__getUnlockEnabled(settings);
+        if (!strcmp(arg2, "lockscreen")) {
+            //libnickel 4.12.12111 * _ZN13PowerSettings16getUnlockEnabledEv
+            bool (*PowerSettings__getUnlockEnabled)(Settings*);
+            NM_ACT_XSYM(PowerSettings__getUnlockEnabled, "_ZN13PowerSettings16getUnlockEnabledEv", "could not dlsym PowerSettings::getUnlockEnabled");
+    
+            //libnickel 4.12.12111 * _ZN13PowerSettings16setUnlockEnabledEb
+            bool (*PowerSettings__setUnlockEnabled)(Settings*, bool);
+            NM_ACT_XSYM(PowerSettings__setUnlockEnabled, "_ZN13PowerSettings16setUnlockEnabledEb", "could not dlsym PowerSettings::setUnlockEnabled");
+    
+            if (mode == mode_toggle) {
+                v = PowerSettings__getUnlockEnabled(settings);
+                vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
+            }
+    
+            PowerSettings__setUnlockEnabled(settings, !v);
+            vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
+    
+            NM_CHECK(nullptr, PowerSettings__getUnlockEnabled(settings) == !v, "failed to set setting");
+            vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
+        } else if (!strcmp(arg2, "sleepcover")) {
+            //libnickel 4.6 * _ZN13PowerSettings24getSleepAccessoryEnabledEv
+            bool (*PowerSettings__getSleepAccessoryEnabled)(Settings*);
+            NM_ACT_XSYM(PowerSettings__getSleepAccessoryEnabled, "_ZN13PowerSettings24getSleepAccessoryEnabledEv", "could not dlsym PowerSettings::getSleepAccessoryEnabled");
+    
+            //libnickel 4.6 * _ZN13PowerSettings24setSleepAccessoryEnabledEb
+            bool (*PowerSettings__setSleepAccessoryEnabled)(Settings*, bool);
+            NM_ACT_XSYM(PowerSettings__setSleepAccessoryEnabled, "_ZN13PowerSettings24setSleepAccessoryEnabledEb", "could not dlsym PowerSettings::setSleepAccessoryEnabled");
+    
+            if (mode == mode_toggle) {
+                v = PowerSettings__getSleepAccessoryEnabled(settings);
+                vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
+            }
+    
+            PowerSettings__setSleepAccessoryEnabled(settings, !v);
+            vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
+    
+            NM_CHECK(nullptr, PowerSettings__getSleepAccessoryEnabled(settings) == !v, "failed to set setting");
             vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
         }
-
-        PowerSettings__setUnlockEnabled(settings, !v);
-        vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
-
-        NM_CHECK(nullptr, PowerSettings__getUnlockEnabled(settings) == !v, "failed to set setting");
-        vtable_ptr(settings) = vtable_target(PowerSettings_vtable);
     } else if (!strcmp(arg2, "force_wifi") || !strcmp(arg2, "auto_usb_gadget")) {
         //libnickel 4.6 * _ZTV11DevSettings
         void *PowerSettings_vtable = dlsym(RTLD_DEFAULT, "_ZTV11DevSettings");
