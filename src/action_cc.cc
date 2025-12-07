@@ -8,6 +8,7 @@
 #include <QUrl>
 #include <QVariant>
 #include <QWidget>
+#include <QKeyEvent>
 
 #include <initializer_list>
 
@@ -64,6 +65,57 @@ typedef void BluetoothManager;
     NM_ACT_SYM(var, symb);               \
     NM_CHECK(nullptr, var, err);         \
 } while(0)
+
+
+struct SettingsSymbols {
+    //libnickel 4.6 * _ZN8SettingsC2ERK6Deviceb _ZN8SettingsC2ERK6Device
+    void *(*Settings_Settings)(Settings*, Device*, bool);
+    void *(*Settings_SettingsLegacy)(Settings*, Device*);
+    //libnickel 4.6 * _ZN8SettingsD2Ev
+    void *(*Settings_SettingsD)(Settings*);
+    //libnickel 4.6 * _ZN8Settings10getSettingERK7QStringRK8QVariant
+    QVariant (*Settings_getSetting)(Settings*, QString const&, QVariant const&);
+    //libnickel 4.6 * _ZN8Settings11saveSettingERK7QStringRK8QVariantb
+    void *(*Settings_saveSetting)(Settings*, QString const&, QVariant const&, bool);
+};
+
+
+Device* get_Device_getCurrentDevice() {
+    //libnickel 4.6 * _ZN6Device16getCurrentDeviceEv
+    Device *(*Device_getCurrentDevice)();
+    NM_ACT_XSYM(Device_getCurrentDevice, "_ZN6Device16getCurrentDeviceEv", "could not dlsym Device::getCurrentDevice");
+
+    Device *dev = Device_getCurrentDevice();
+    NM_CHECK(nullptr, dev, "could not get shared nickel device pointer");
+
+    return dev;
+}
+
+SettingsSymbols prepare_Settings_symbols() {
+    SettingsSymbols symbols{};
+
+    //libnickel 4.6 * _ZN8SettingsC2ERK6Deviceb _ZN8SettingsC2ERK6Device
+    NM_ACT_SYM(symbols.Settings_Settings, "_ZN8SettingsC2ERK6Deviceb");
+    NM_ACT_SYM(symbols.Settings_SettingsLegacy, "_ZN8SettingsC2ERK6Device");
+    NM_CHECK(SettingsSymbols{}, symbols.Settings_Settings || symbols.Settings_SettingsLegacy, "could not dlsym Settings constructor (new and/or old)");
+
+    //libnickel 4.6 * _ZN8SettingsD2Ev
+    NM_ACT_SYM(symbols.Settings_SettingsD, "_ZN8SettingsD2Ev");
+    NM_CHECK(SettingsSymbols{}, symbols.Settings_SettingsD, "could not dlsym Settings destructor");
+
+    // some settings don't have symbols in a usable form, and some are inlined, so we may need to set them directly
+    //libnickel 4.6 * _ZN8Settings10getSettingERK7QStringRK8QVariant
+    NM_ACT_SYM(symbols.Settings_getSetting, "_ZN8Settings10getSettingERK7QStringRK8QVariant");
+    NM_CHECK(SettingsSymbols{}, symbols.Settings_getSetting, "could not dlsym Settings::getSetting");
+
+    // ditto
+    //libnickel 4.6 * _ZN8Settings11saveSettingERK7QStringRK8QVariantb
+    NM_ACT_SYM(symbols.Settings_saveSetting, "_ZN8Settings11saveSettingERK7QStringRK8QVariantb");
+    NM_CHECK(SettingsSymbols{}, symbols.Settings_saveSetting, "could not dlsym Settings::saveSetting");
+
+    return symbols;
+}
+
 
 NM_ACTION_(nickel_open) {
     char *tmp1 = strdupa(arg); // strsep and strtrim will modify it
@@ -131,7 +183,8 @@ NM_ACTION_(nickel_open) {
         else if (!strcmp(arg2, "authors"))  sym_f = "_ZN15LibraryNavMixin11showAuthorsEv";             //libnickel 4.6 * _ZN15LibraryNavMixin11showAuthorsEv
         else if (!strcmp(arg2, "series"))   sym_f = "_ZN15LibraryNavMixin10showSeriesEv";              //libnickel 4.20.14601 * _ZN15LibraryNavMixin10showSeriesEv
         else if (!strcmp(arg2, "shelves"))  sym_f = "_ZN15LibraryNavMixin11showShelvesEv";             //libnickel 4.6 * _ZN15LibraryNavMixin11showShelvesEv
-        else if (!strcmp(arg2, "pocket"))   sym_f = "_ZN15LibraryNavMixin17showPocketLibraryEv";       //libnickel 4.6 * _ZN15LibraryNavMixin17showPocketLibraryEv
+        else if (!strcmp(arg2, "pocket"))   sym_f = "_ZN15LibraryNavMixin17showPocketLibraryEv";       //libnickel 4.6 4.38.23171 _ZN15LibraryNavMixin17showPocketLibraryEv
+                                                                                                              //libnickel 4.39 4.42.23296 _ZN15LibraryNavMixin17showPocketLibraryEv
         else if (!strcmp(arg2, "instapaper")) sym_f = "_ZN15LibraryNavMixin21showInstapaperLibraryEv"; //libnickel 4.43.23418 * _ZN15LibraryNavMixin21showInstapaperLibraryEv
         else if (!strcmp(arg2, "dropbox"))  sym_f = "_ZN15LibraryNavMixin11showDropboxEv";             //libnickel 4.18.13737 4.22.15268 _ZN15LibraryNavMixin11showDropboxEv
     } else if (!strcmp(arg1, "reading_life")) {
@@ -140,7 +193,7 @@ NM_ACTION_(nickel_open) {
 
         if      (!strcmp(arg2, "reading_life")) sym_f = "_ZN19ReadingLifeNavMixin14chooseActivityEv"; //libnickel 4.6 * _ZN19ReadingLifeNavMixin14chooseActivityEv
         else if (!strcmp(arg2, "stats"))        sym_f = "_ZN19ReadingLifeNavMixin5statsEv";           //libnickel 4.6 * _ZN19ReadingLifeNavMixin5statsEv
-        else if (!strcmp(arg2, "awards"))       sym_f = "_ZN19ReadingLifeNavMixin6awardsEv";          //libnickel 4.6 * _ZN19ReadingLifeNavMixin6awardsEv
+        else if (!strcmp(arg2, "awards"))       sym_f = "_ZN19ReadingLifeNavMixin6awardsEv";          //libnickel 4.6 4.38.21908 _ZN19ReadingLifeNavMixin6awardsEv
         else if (!strcmp(arg2, "words"))        sym_f = "_ZN19ReadingLifeNavMixin7myWordsEv";         //libnickel 4.6 * _ZN19ReadingLifeNavMixin7myWordsEv
     } else if (!strcmp(arg1, "store")) {
         sym_c = "_ZN13StoreNavMixinC1Ev"; //libnickel 4.6 * _ZN13StoreNavMixinC1Ev
@@ -213,34 +266,14 @@ NM_ACTION_(nickel_setting) {
     else
         NM_ERR_RET(nullptr, "unknown action '%s' for nickel_setting: expected 'toggle', 'enable', or 'disable'", arg1);
 
-    //libnickel 4.6 * _ZN6Device16getCurrentDeviceEv
-    Device *(*Device_getCurrentDevice)();
-    NM_ACT_XSYM(Device_getCurrentDevice, "_ZN6Device16getCurrentDeviceEv", "could not dlsym Device::getCurrentDevice");
+    SettingsSymbols settings_syms = prepare_Settings_symbols();
+    auto Settings_Settings = settings_syms.Settings_Settings;
+    auto Settings_SettingsLegacy = settings_syms.Settings_SettingsLegacy;
+    auto Settings_SettingsD = settings_syms.Settings_SettingsD;
+    auto Settings_getSetting = settings_syms.Settings_getSetting;
+    auto Settings_saveSetting = settings_syms.Settings_saveSetting;
 
-    //libnickel 4.6 * _ZN8SettingsC2ERK6Deviceb _ZN8SettingsC2ERK6Device
-    void *(*Settings_Settings)(Settings*, Device*, bool);
-    void *(*Settings_SettingsLegacy)(Settings*, Device*);
-    NM_ACT_SYM(Settings_Settings, "_ZN8SettingsC2ERK6Deviceb");
-    NM_ACT_SYM(Settings_SettingsLegacy, "_ZN8SettingsC2ERK6Device");
-    NM_CHECK(nullptr, Settings_Settings || Settings_SettingsLegacy, "could not dlsym Settings constructor (new and/or old)");
-
-    //libnickel 4.6 * _ZN8SettingsD2Ev
-    void *(*Settings_SettingsD)(Settings*);
-    NM_ACT_XSYM(Settings_SettingsD, "_ZN8SettingsD2Ev", "could not dlsym Settings destructor");
-
-    // some settings don't have symbols in a usable form, and some are inlined, so we may need to set them directly
-    //libnickel 4.6 * _ZN8Settings10getSettingERK7QStringRK8QVariant
-    QVariant (*Settings_getSetting)(Settings*, QString const&, QVariant const&); // the last param is the default, also note that this requires a subclass of Settings
-    NM_ACT_XSYM(Settings_getSetting, "_ZN8Settings10getSettingERK7QStringRK8QVariant", "could not dlsym Settings::getSetting");
-
-    // ditto
-    //libnickel 4.6 * _ZN8Settings11saveSettingERK7QStringRK8QVariantb
-    void *(*Settings_saveSetting)(Settings*, QString const&, QVariant const&, bool); // the last param is whether to do a full disk sync immediately (rather than waiting for the kernel to do it)
-    NM_ACT_XSYM(Settings_saveSetting, "_ZN8Settings11saveSettingERK7QStringRK8QVariantb", "could not dlsym Settings::saveSetting");
-
-    Device *dev = Device_getCurrentDevice();
-    NM_CHECK(nullptr, dev, "could not get shared nickel device pointer");
-
+    Device *dev = get_Device_getCurrentDevice();
     Settings *settings = alloca(128); // way larger than it is, but better to be safe
     if (Settings_Settings)
         Settings_Settings(settings, dev, false);
@@ -697,24 +730,9 @@ NM_ACTION_(nickel_orientation) {
     void (*QWindowSystemInterface_handleScreenOrientationChange)(QScreen*, Qt::ScreenOrientation);
     NM_ACT_XSYM(QWindowSystemInterface_handleScreenOrientationChange, "_ZN22QWindowSystemInterface29handleScreenOrientationChangeEP7QScreenN2Qt17ScreenOrientationE", "could not dlsym QWindowSystemInterface::handleScreenOrientationChange (did the way Nickel handles the screen orientation sensor change?)");
 
-    //libnickel 4.6 * _ZN6Device16getCurrentDeviceEv
-    Device *(*Device_getCurrentDevice)();
-    NM_ACT_XSYM(Device_getCurrentDevice, "_ZN6Device16getCurrentDeviceEv", "could not dlsym Device::getCurrentDevice");
-
     //libnickel 4.11.11911 * _ZNK6Device20hasOrientationSensorEv
     bool (*Device_hasOrientationSensor)(Device*);
     NM_ACT_XSYM(Device_hasOrientationSensor, "_ZNK6Device20hasOrientationSensorEv", "could not dlsym Device::hasOrientationSensor");
-
-    //libnickel 4.6 * _ZN8SettingsC2ERK6Deviceb _ZN8SettingsC2ERK6Device
-    void *(*Settings_Settings)(Settings*, Device*, bool);
-    void *(*Settings_SettingsLegacy)(Settings*, Device*);
-    NM_ACT_SYM(Settings_Settings, "_ZN8SettingsC2ERK6Deviceb");
-    NM_ACT_SYM(Settings_SettingsLegacy, "_ZN8SettingsC2ERK6Device");
-    NM_CHECK(nullptr, Settings_Settings || Settings_SettingsLegacy, "could not dlsym Settings constructor (new and/or old)");
-
-    //libnickel 4.6 * _ZN8SettingsD2Ev
-    void *(*Settings_SettingsD)(Settings*);
-    NM_ACT_XSYM(Settings_SettingsD, "_ZN8SettingsD2Ev", "could not dlsym Settings destructor");
 
     void *ApplicationSettings_vtable = dlsym(RTLD_DEFAULT, "_ZTV19ApplicationSettings");
     NM_CHECK(nullptr, ApplicationSettings_vtable, "could not dlsym the vtable for ApplicationSettings");
@@ -727,8 +745,12 @@ NM_ACTION_(nickel_orientation) {
     int (*ApplicationSettings_lockedOrientation)(Settings*);
     NM_ACT_XSYM(ApplicationSettings_lockedOrientation, "_ZN19ApplicationSettings17lockedOrientationEv", "could not dlsym ApplicationSettings::lockedOrientation");
 
-    Device *dev = Device_getCurrentDevice();
-    NM_CHECK(nullptr, dev, "could not get shared nickel device pointer");
+    Device *dev = get_Device_getCurrentDevice();
+
+    SettingsSymbols settings_syms = prepare_Settings_symbols();
+    auto Settings_Settings = settings_syms.Settings_Settings;
+    auto Settings_SettingsLegacy = settings_syms.Settings_SettingsLegacy;
+    auto Settings_SettingsD = settings_syms.Settings_SettingsD;
 
     Settings *settings = alloca(128); // way larger than it is, but better to be safe
     if (Settings_Settings)
@@ -998,6 +1020,95 @@ NM_ACTION_(nickel_bluetooth) {
             return nm_action_result_toast("Bluetooth scan initiated.");
         default:
             NM_ERR_RET(nullptr, "unknown nickel_bluetooth action '%s'", arg);
+            break;
+    }
+}
+
+NM_ACTION_(nickel_screenshot) {
+    enum SCREENSHOT_ACTION {
+        CAPTURE = 0b00001,
+    };
+
+    int action = 0;
+    if (!strcmp(arg, "capture")) action |= CAPTURE;
+    else
+        NM_ERR_RET(nullptr, "unknown nickel_screenshot action '%s'", arg);
+
+    QObject* app = nullptr;
+    QKeyEvent* press = nullptr;
+    QKeyEvent* release = nullptr;
+
+    #define vtable_ptr(x) *reinterpret_cast<void**&>(x)
+    #define vtable_target(x) reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(x)+8)
+
+    // Prepare Settings symbols
+    SettingsSymbols settings_syms = prepare_Settings_symbols();
+    auto Settings_Settings = settings_syms.Settings_Settings;
+    auto Settings_SettingsLegacy = settings_syms.Settings_SettingsLegacy;
+    auto Settings_SettingsD = settings_syms.Settings_SettingsD;
+    auto Settings_getSetting = settings_syms.Settings_getSetting;
+    auto Settings_saveSetting = settings_syms.Settings_saveSetting;
+
+    Device *dev = get_Device_getCurrentDevice();
+    Settings *settings = alloca(128); // way larger than it is, but better to be safe
+    if (Settings_Settings)
+        Settings_Settings(settings, dev, false);
+    else if (Settings_SettingsLegacy)
+        Settings_SettingsLegacy(settings, dev);
+
+    QVariant v1;
+
+    //libnickel 4.6 * _ZTV15FeatureSettings
+    void *FeatureSettings_vtable = dlsym(RTLD_DEFAULT, "_ZTV15FeatureSettings");
+    NM_CHECK(nullptr, FeatureSettings_vtable, "could not dlsym the vtable for FeatureSettings");
+    vtable_ptr(settings) = vtable_target(FeatureSettings_vtable);
+
+    QString screenshot_key = QStringLiteral("Screenshots");
+    bool org_screenshot_enabled = false;
+
+    switch (action) {
+        case CAPTURE:
+            // Pressing the Power button on Kobo is the same as pressing the Escape key on keyboard
+            // So to take screenshot, we just need to:
+            // 1. Enable the "Screenshots" feature
+            // 2. Send an "Escape" KeyEvent to the QApplication instance
+
+            // Get Nickel::Application->notify()
+            //libnickel 4.6 * _ZN18Nickel3Application6notifyEP7QObjectP6QEvent
+            int (*AppNotify)(void* app, void* receiver, void* event);
+            NM_ACT_XSYM(AppNotify, "_ZN18Nickel3Application6notifyEP7QObjectP6QEvent", "could not dlsym Nickel::Application->notify()");
+
+            app = QApplication::instance();
+
+            // Get the original state of the "Screenshots" setting
+            v1 = Settings_getSetting(settings, screenshot_key, QVariant(false));
+            vtable_ptr(settings) = vtable_target(FeatureSettings_vtable);
+            org_screenshot_enabled = v1.toBool();
+
+            // If it's not enabled => temporary set it to True
+            if (!org_screenshot_enabled) {
+                Settings_saveSetting(settings, screenshot_key, QVariant(true), false);
+                vtable_ptr(settings) = vtable_target(FeatureSettings_vtable);
+            }
+
+            // Send the "Escape" KeyEvent
+            press = new QKeyEvent(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+            release = new QKeyEvent(QEvent::KeyRelease, Qt::Key_Escape, Qt::NoModifier);
+            AppNotify(app, nullptr, press);
+            AppNotify(app, nullptr, release);
+
+            // Restore "Screenshots" setting if it was previously disabled
+            if (!org_screenshot_enabled) {
+                Settings_saveSetting(settings, screenshot_key, QVariant(false), false);
+                vtable_ptr(settings) = vtable_target(FeatureSettings_vtable);
+            }
+
+            // Deconstruct Settings
+            Settings_SettingsD(settings);
+
+            return nm_action_result_silent();
+        default:
+            NM_ERR_RET(nullptr, "unknown nickel_screenshot action '%s'", arg);
             break;
     }
 }

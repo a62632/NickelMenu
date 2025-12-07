@@ -66,6 +66,7 @@
 #                   nickel_open        - opens a view
 #                   nickel_wifi        - controls wifi (note: it doesn't wait for it to connect or disconnect, neither does it check for success)
 #                   nickel_bluetooth   - controls bluetooth
+#                   nickel_screenshot  - take screenshot (without having to turn on the "nickel_setting:screenshots" setting)
 #                   nickel_orientation - controls screen orientation
 #                                        (devices without an orientation sensor may need to use the kobopatch patch "Allow rotation on all devices" or set [DeveloperSettings] ForceAllowLandscape=true)
 #                                        (devices with an orientation sensor don't need to do anything, but can set the config setting to make this work on all views)
@@ -123,12 +124,10 @@
 #                                          library:authors           - Authors
 #                                          library:series            - Series (4.20.14601+)
 #                                          library:shelves           - Collections
-#                                          library:pocket            - Articles
-#                                          library:instapaper        - Instapaper
+#                                          library:pocket            - Articles (until 4.38.23171/4.42.23296)
+#                                          library:instapaper        - Instapaper (4.43.23418+)
 #                                          library:dropbox           - Dropbox (4.18.13737+)
-#                                          library:gdrive            - GoogleDrive (4.36.21095+) Also modify the '.kobo/Kobo/Kobo eReader.conf' with:
-#                                                                          googledrive_link_account_start=https://authorize.kobo.com/{region}/{language}/linkcloudstorage/provider/google_drive
-#                                                                          kobo_googledrive_link_account_enabled=True
+#                                          library:gdrive            - GoogleDrive (4.36.21095+)
 #                                          reading_life:reading_life - Activity (with last tab)
 #                                          reading_life:stats        - Activity
 #                                          reading_life:awards       - Awards
@@ -159,6 +158,8 @@
 #                                          toggle   (4.34.20097+)
 #                                          check    (4.34.20097+)
 #                                          scan     (4.34.20097+)
+#                   nickel_screenshot  - one of:
+#                                          capture               - Capture screenshot directly
 #
 #   chain_success:<action>:<arg>
 #   chain_failure:<action>:<arg>
